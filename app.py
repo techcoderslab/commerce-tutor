@@ -175,4 +175,5 @@ if prompt:
                 if voice_on:
                     try:
                         speak_text = clean_text_for_speech(response.text)
-                        tts = gTTS(text=speak_text, lang='
+                        tts = gTTS(text=speak_text, lang='en', tld='co.in', slow=False)
+
