@@ -1,12 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 from datetime import datetime
-from gtts import gTTS  # Voice Library
-import io              # Audio handling
+from gtts import gTTS
+import io
 
 # --- PAGE CONFIG ---
 st.set_page_config(
-    page_title="CBSE Commerce Tutor & Planner",
+    page_title="CBSE Commerce Tutor",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -34,8 +34,26 @@ def get_session_status():
     else: return "BREAK", cycle_time - 30 
 
 def clean_text_for_speech(text):
-    """Removes special markdown characters for smoother speech."""
-    text = text.replace("*", "").replace("#", "").replace("_", "")
+    """
+    Removes markdown symbols so the voice doesn't say 'Dash Dash' or 'Asterisk'.
+    """
+    # 1. Remove Horizontal Lines (---)
+    text = text.replace("---", "")
+    text = text.replace("___", "")
+    
+    # 2. Remove Bold/Italic markers (* and _)
+    text = text.replace("*", "")
+    text = text.replace("_", "")
+    
+    # 3. Remove Headings (#)
+    text = text.replace("#", "")
+    
+    # 4. Remove Code blocks (`)
+    text = text.replace("`", "")
+    
+    # 5. Remove extra spaces created by deletion
+    text = " ".join(text.split())
+    
     return text
 
 # --- SIDEBAR ---
@@ -43,21 +61,21 @@ with st.sidebar:
     st.title("Study Dashboard")
     api_key = st.text_input("Gemini API Key:", type="password")
 
-    # --- NEW SETTINGS ---
+    # SETTINGS
     st.markdown("### ⚙️ Settings")
     voice_on = st.checkbox("🔊 Voice Mode (Indian Accent)", value=False)
     concise_mode = st.checkbox("⚡ Concise / Revision Mode", value=False)
     
     st.markdown("---")
 
-    # STUDENT PROFILE
+    # PROFILE
     st.subheader("👤 Profile")
     student_name = st.text_input("Name", value="Priya Sharma")
     student_class = st.radio("Class", ["Class 11", "Class 12"], horizontal=True)
 
     st.markdown("---")
 
-    # ⏱️ SCHEDULER
+    # TIMER
     st.subheader("⏳ 3-Hour Schedule")
     if not st.session_state.study_session_active:
         st.info("Goal: 3 Hours (30m Study / 5m Break)")
@@ -100,7 +118,7 @@ current_status, _ = get_session_status()
 if st.session_state.study_session_active and current_status == "BREAK":
     st.info("☕ BREAK TIME! Step away from the screen.")
 
-# Display History
+# History
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -109,7 +127,7 @@ prompt = st.chat_input("Ask a doubt...")
 
 if prompt:
     if not api_key:
-        st.error("Enter API Key in sidebar first.")
+        st.error("Enter API Key in sidebar.")
         st.stop()
 
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -119,7 +137,7 @@ if prompt:
     try:
         genai.configure(api_key=api_key)
         
-        # 1. AUTO-DETECT MODEL
+        # MODEL FINDER
         found_model = None
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
@@ -127,12 +145,11 @@ if prompt:
                 break 
         if not found_model: st.error("❌ No AI models found.")
         
-        # 2. CONCISE MODE LOGIC
+        # PROMPT LOGIC
         length_instruction = "Give detailed explanations with examples."
         if concise_mode:
-            length_instruction = "BE EXTREMELY CONCISE. Summarize in less than 60 words. Use bullet points."
+            length_instruction = "BE EXTREMELY CONCISE. Summarize in less than 60 words."
 
-        # 3. SUBJECT LOGIC
         if "Accountancy" in subject_mode:
             focus_prompt = "Focus on Journal Entries, Ledgers. Use Tables."
         elif "Economics" in subject_mode:
@@ -154,25 +171,8 @@ if prompt:
                 response = model.generate_content(prompt)
                 st.markdown(response.text)
                 
-                # --- VOICE LOGIC ---
+                # VOICE GENERATION
                 if voice_on:
                     try:
-                        # Clean text so it doesn't read out symbols
                         speak_text = clean_text_for_speech(response.text)
-                        
-                        # Generate Audio (tld='co.in' = Indian Accent)
-                        tts = gTTS(text=speak_text, lang='en', tld='co.in', slow=False)
-                        
-                        # Save to memory
-                        audio_data = io.BytesIO()
-                        tts.write_to_fp(audio_data)
-                        
-                        # Show Audio Player
-                        st.audio(audio_data, format='audio/mp3')
-                    except Exception as e:
-                        st.warning("⚠️ Could not generate voice. (Check internet for TTS)")
-
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-
-    except Exception as e:
-        st.error(f"Error: {e}")
+                        tts = gTTS(text=speak_text, lang='
