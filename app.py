@@ -37,23 +37,10 @@ def clean_text_for_speech(text):
     """
     Removes markdown symbols so the voice doesn't say 'Dash Dash' or 'Asterisk'.
     """
-    # 1. Remove Horizontal Lines (---)
-    text = text.replace("---", "")
-    text = text.replace("___", "")
-    
-    # 2. Remove Bold/Italic markers (* and _)
-    text = text.replace("*", "")
-    text = text.replace("_", "")
-    
-    # 3. Remove Headings (#)
-    text = text.replace("#", "")
-    
-    # 4. Remove Code blocks (`)
-    text = text.replace("`", "")
-    
-    # 5. Remove extra spaces created by deletion
+    text = text.replace("---", "").replace("___", "")
+    text = text.replace("*", "").replace("_", "")
+    text = text.replace("#", "").replace("`", "")
     text = " ".join(text.split())
-    
     return text
 
 # --- SIDEBAR ---
@@ -175,5 +162,16 @@ if prompt:
                 if voice_on:
                     try:
                         speak_text = clean_text_for_speech(response.text)
+                        # Voice setting with Indian Accent
                         tts = gTTS(text=speak_text, lang='en', tld='co.in', slow=False)
+                        
+                        audio_data = io.BytesIO()
+                        tts.write_to_fp(audio_data)
+                        st.audio(audio_data, format='audio/mp3')
+                    except Exception as e:
+                        st.warning("⚠️ Voice Error (Check Internet).")
 
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+
+    except Exception as e:
+        st.error(f"Error: {e}")
